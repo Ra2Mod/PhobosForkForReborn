@@ -18,6 +18,9 @@ HRESULT __stdcall Blowfish_Loader(
 		return result;
 
 	HMODULE hDll = LoadLibrary("Blowfish.dll");
+	if (!hDll)
+		hDll = LoadLibrary("..\\Blowfish.dll");
+
 	if (hDll) {
 		auto GetClassObject = (pDllGetClassObject)GetProcAddress(hDll, "DllGetClassObject");
 		if (GetClassObject) {
@@ -42,14 +45,9 @@ HRESULT __stdcall Blowfish_Loader(
 
 	return result;
 }
-/*
-DEFINE_NAKED_LJMP(0x6BEDDD, _Blowfish_Loader_Init) {
-	CALL(Blowfish_Loader);
-	JMP(0x6BEDE3);
-}
 
-DEFINE_NAKED_LJMP(0x437F6E, _Blowfish_Loader_Create) {
-	CALL(Blowfish_Loader);
-	JMP(0x437F74);
-}
-*/
+DEFINE_POINTER_CALL(0x6BEDDD, Blowfish_Loader);
+DEFINE_PATCH(0x6BEDE2, 0x90);
+
+DEFINE_POINTER_CALL(0x437F6E, Blowfish_Loader);
+DEFINE_PATCH(0x437F73, 0x90);
