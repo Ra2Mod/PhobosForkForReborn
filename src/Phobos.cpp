@@ -1,6 +1,6 @@
 #include <Phobos.h>
 
-#include <Helpers/Macro.h>
+#include <Utilities/Macro.h>
 
 #include <CCINIClass.h>
 #include <Unsorted.h>
@@ -118,37 +118,9 @@ bool __stdcall DllMain(HANDLE hInstance, DWORD dwReason, LPVOID v)
 	return true;
 }
 
-DEFINE_HOOK(0x7CD810, ExeRun, 0x9)
+EXPORT ExeRun()
 {
 	Patch::Apply();
-
-#ifdef DEBUG
-
-	if (Phobos::DetachFromDebugger())
-	{
-		MessageBoxW(NULL,
-		L"You can now attach a debugger.\n\n"
-
-		L"Press OK to continue YR execution.",
-		L"Debugger Notice", MB_OK);
-	}
-	else
-	{
-		MessageBoxW(NULL,
-		L"You can now attach a debugger.\n\n"
-
-		L"To attach a debugger find the YR process in Process Hacker "
-		L"/ Visual Studio processes window and detach debuggers from it, "
-		L"then you can attach your own debugger. After this you should "
-		L"terminate Syringe.exe because it won't automatically exit when YR is closed.\n\n"
-
-		L"Press OK to continue YR execution.",
-		L"Debugger Notice", MB_OK);
-	}
-
-
-#endif
-
 	return 0;
 }
 
@@ -163,25 +135,23 @@ DEFINE_HOOK(0x52F639, _YR_CmdLineParse, 0x5)
 
 DEFINE_HOOK(0x5FACDF, OptionsClass_LoadSettings_LoadPhobosSettings, 0x5)
 {
-	Phobos::Config::ToolTipDescriptions = CCINIClass::INI_RA2MD->ReadBool("Phobos", "ToolTipDescriptions", true);
-	Phobos::Config::PrioritySelectionFiltering = CCINIClass::INI_RA2MD->ReadBool("Phobos", "PrioritySelectionFiltering", true);
+//	Phobos::Config::ToolTipDescriptions = CCINIClass::INI_RA2MD->ReadBool("Phobos", "ToolTipDescriptions", true);
+//	Phobos::Config::PrioritySelectionFiltering = CCINIClass::INI_RA2MD->ReadBool("Phobos", "PrioritySelectionFiltering", true);
 	Phobos::Config::EnableBuildingPlacementPreview = CCINIClass::INI_RA2MD->ReadBool("Phobos", "ShowBuildingPlacementPreview",false);
 
-	CCINIClass* pINI_UIMD = Phobos::OpenConfig("uimd.ini");
-
+	CCINIClass* pINI_UIMD = Phobos::OpenConfig((const char*)0x827DC8);    // UIMD.INI
+/*
 	// LoadingScreen
 	{
 		Phobos::UI::DisableEmptySpawnPositions =
 			pINI_UIMD->ReadBool("LoadingScreen", "DisableEmptySpawnPositions", false);
 	}
-
+*/
 	// ToolTips
 	{
-		Phobos::UI::ExtendedToolTips =
-			pINI_UIMD->ReadBool(TOOLTIPS_SECTION, "ExtendedToolTips", false);
+		Phobos::UI::ExtendedToolTips = pINI_UIMD->ReadBool(TOOLTIPS_SECTION, "ExtendedToolTips", false);
 
-		Phobos::UI::MaxToolTipWidth =
-			pINI_UIMD->ReadInteger(TOOLTIPS_SECTION, "MaxWidth", 0);
+		Phobos::UI::MaxToolTipWidth = pINI_UIMD->ReadInteger(TOOLTIPS_SECTION, "MaxWidth", 0);
 
 		pINI_UIMD->ReadString(TOOLTIPS_SECTION, "CostLabel", NONE_STR, Phobos::readBuffer);
 		Phobos::UI::CostLabel = GeneralUtils::LoadStringOrDefault(Phobos::readBuffer, L"$");
@@ -192,7 +162,7 @@ DEFINE_HOOK(0x5FACDF, OptionsClass_LoadSettings_LoadPhobosSettings, 0x5)
 		pINI_UIMD->ReadString(TOOLTIPS_SECTION, "TimeLabel", NONE_STR, Phobos::readBuffer);
 		Phobos::UI::TimeLabel = GeneralUtils::LoadStringOrDefault(Phobos::readBuffer, L"\u231a"); // ⌚
 	}
-
+/*
 	// Sidebar
 	{
 		Phobos::UI::ShowHarvesterCounter =
@@ -219,15 +189,17 @@ DEFINE_HOOK(0x5FACDF, OptionsClass_LoadSettings_LoadPhobosSettings, 0x5)
 		Phobos::UI::PowerDelta_ConditionRed =
 			pINI_UIMD->ReadDouble(SIDEBAR_SECTION, "PowerDelta.ConditionRed", Phobos::UI::PowerDelta_ConditionRed);
 	}
-
+*/
 	Phobos::CloseConfig(pINI_UIMD);
 
-	CCINIClass* pINI = Phobos::OpenConfig((const char*)0x826260);
-	Phobos::Config::ArtImageSwap = pINI->ReadBool("General", "ArtImageSwap", false);
-	Phobos::CloseConfig(pINI);
+//	CCINIClass* pINI = Phobos::OpenConfig((const char*)0x826260);
+//	Phobos::Config::ArtImageSwap = pINI->ReadBool("General", "ArtImageSwap", false);
+//	Phobos::CloseConfig(pINI);
+
 
 	return 0;
 }
+DEFINE_POINTER_CALL(0x5FACE4, OptionsClass_LoadSettings_LoadPhobosSettings)
 
 DEFINE_HOOK(0x66E9DF, RulesClass_Process_Phobos, 0x8)
 {
