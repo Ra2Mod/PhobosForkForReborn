@@ -63,7 +63,7 @@ public:
 	class Config
 	{
 	public:
-		static bool ToolTipDescriptions;
+		static bool ExtendedToolTips;
 		static bool PrioritySelectionFiltering;
 		static bool DevelopmentCommands;
 		static bool ArtImageSwap;

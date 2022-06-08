@@ -1,4 +1,4 @@
-#include <Helpers/Macro.h>
+#include <Utilities/Macro.h>
 
 #include "PhobosToolTip.h"
 
@@ -16,6 +16,15 @@
 #include <sstream>
 #include <iomanip>
 
+wchar_t* replace_wchar_t(wchar_t* str, wchar_t find, wchar_t replace){
+    wchar_t *current_pos = wcschr(str,find);
+    while (current_pos) {
+        *current_pos = replace;
+        current_pos = wcschr(current_pos,find);
+    }
+    return str;
+}
+
 PhobosToolTip PhobosToolTip::Instance;
 
 inline bool PhobosToolTip::IsEnabled() const
@@ -25,14 +34,14 @@ inline bool PhobosToolTip::IsEnabled() const
 
 inline const wchar_t* PhobosToolTip::GetUIDescription(TechnoTypeExt::ExtData* pData) const
 {
-	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription.Get().empty()
+	return Phobos::Config::ExtendedToolTips && !pData->UIDescription.Get().empty()
 		? pData->UIDescription.Get().Text
 		: nullptr;
 }
 
 inline const wchar_t* PhobosToolTip::GetUIDescription(SWTypeExt::ExtData* pData) const
 {
-	return Phobos::Config::ToolTipDescriptions && !pData->UIDescription.Get().empty()
+	return Phobos::Config::ExtendedToolTips && !pData->UIDescription.Get().empty()
 		? pData->UIDescription.Get().Text
 		: nullptr;
 }
@@ -95,7 +104,7 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 	if (!pType)
 		return;
 
-	auto const pData = TechnoTypeExt::ExtMap.Find(pType);
+	// auto const pData = TechnoTypeExt::ExtMap.Find(pType);
 
 	int nBuildTime = this->GetBuildTime(pType);
 	int nSec = nBuildTime / 15 % 60;
@@ -105,48 +114,60 @@ void PhobosToolTip::HelpText(TechnoTypeClass* pType)
 	int cost = pType->GetActualCost(HouseClass::Player);
 
 	std::wostringstream oss;
-	oss << pType->UIName << L"\n"
-		<< (cost < 0 ? L"+" : L"")
-		<< Phobos::UI::CostLabel << std::abs(cost) << L" "
-		<< Phobos::UI::TimeLabel
-		// << std::setw(2) << std::setfill(L'0') << nHour << L":"
-		<< std::setw(2) << std::setfill(L'0') << nMin << L":"
-		<< std::setw(2) << std::setfill(L'0') << nSec;
+	wcscpy_s(Phobos::wideBuffer, pType->UIName);
+	replace_wchar_t(Phobos::wideBuffer, 0x20, 0x0A);
+	oss << Phobos::wideBuffer;
 
-	if (auto const nPower = this->GetPower(pType))
+	oss << L"\n" << (cost < 0 ? L"+" : L"");
+	oss << Phobos::UI::CostLabel << std::abs(cost);
+
+	if (PhobosToolTip::IsEnabled())
 	{
-		oss << L" " << Phobos::UI::PowerLabel;
-		if (nPower > 0)
-			oss << L"+";
-		oss << std::setw(1) << nPower;
+		oss << L" "
+			<< Phobos::UI::TimeLabel
+			// << std::setw(2) << std::setfill(L'0') << nHour << L":"
+			<< std::setw(2) << std::setfill(L'0') << nMin << L":"
+			<< std::setw(2) << std::setfill(L'0') << nSec;
+
+		if (auto const nPower = this->GetPower(pType))
+		{
+			oss << L" " << Phobos::UI::PowerLabel;
+			if (nPower > 0)
+				oss << L"+";
+			oss << std::setw(1) << nPower;
+		}
 	}
 
-	if (auto pDesc = this->GetUIDescription(pData))
-		oss << L"\n" << pDesc;
+	// if (auto pDesc = this->GetUIDescription(pData))
+	// 	oss << L"\n" << pDesc;
 
 	this->TextBuffer = oss.str();
 }
 
 void PhobosToolTip::HelpText(SuperWeaponTypeClass* pType)
 {
-	auto const pData = SWTypeExt::ExtMap.Find(pType);
+	// auto const pData = SWTypeExt::ExtMap.Find(pType);
 
 	std::wostringstream oss;
-	oss << pType->UIName;
+	wcscpy_s(Phobos::wideBuffer, pType->UIName);
+	replace_wchar_t(Phobos::wideBuffer, 0x20, 0x0A);
+	oss << Phobos::wideBuffer;
 	bool showCost = false;
 
-	if (int nCost = std::abs(pData->Money_Amount))
-	{
-		oss << L"\n";
+	/*
+		if (int nCost = std::abs(pData->Money_Amount))
+		{
+			oss << L"\n";
 
-		if (pData->Money_Amount > 0)
-			oss << '+';
+			if (pData->Money_Amount > 0)
+				oss << '+';
 
-		oss << Phobos::UI::CostLabel << nCost;
-		showCost = true;
-	}
+			oss << Phobos::UI::CostLabel << nCost;
+			showCost = true;
+		}
+	*/
 
-	if (pType->RechargeTime > 0)
+	if (PhobosToolTip::IsEnabled() && pType->RechargeTime > 0)
 	{
 		if (!showCost)
 			oss << L"\n";
@@ -161,41 +182,58 @@ void PhobosToolTip::HelpText(SuperWeaponTypeClass* pType)
 			<< std::setw(2) << std::setfill(L'0') << nSec;
 	}
 
-	if (auto pDesc = this->GetUIDescription(pData))
-		oss << L"\n" << pDesc;
+	// if (auto pDesc = this->GetUIDescription(pData))
+	// 	oss << L"\n" << pDesc;
 
 	this->TextBuffer = oss.str();
 }
 
 // Hooks
 
-DEFINE_HOOK(0x6A9316, SidebarClass_StripClass_HelpText, 0x6)
+const wchar_t* _stdcall SidebarClass_StripClass_HelpText(StripClass* pThis)
 {
 	PhobosToolTip::Instance.IsCameo = true;
 
-	if (!PhobosToolTip::Instance.IsEnabled())
-		return 0;
-
-	GET(StripClass*, pThis, EAX);
 	PhobosToolTip::Instance.HelpText(pThis->Cameos[0]); // pStrip->Cameos[nID] in fact
-	R->EAX(L"X");
-	return 0x6A93DE;
+	return L"X";
 }
 
-// TODO: reimplement CCToolTip::Draw2 completely
-
-DEFINE_HOOK(0x478EE1, CCToolTip_Draw2_SetBuffer, 0x6)
+DEFINE_NAKED_LJMP(0x6A9319, _SidebarClass_StripClass_HelpText)
 {
-	if (PhobosToolTip::Instance.IsEnabled() && PhobosToolTip::Instance.IsCameo)
-		R->EDI(PhobosToolTip::Instance.GetBuffer());
-	return 0;
+	_asm {push eax};
+	_asm {call SidebarClass_StripClass_HelpText};
+
+	_asm {mov ecx, 0x6A93DE};
+	_asm {jmp ecx};
 }
 
-DEFINE_HOOK(0x478E10, CCToolTip_Draw1, 0x0)
+const wchar_t* _stdcall CCToolTip_Draw2_SetBuffer(const wchar_t* def)
 {
-	GET(CCToolTip*, pThis, ECX);
-	GET_STACK(bool, bFullRedraw, 0x4);
+	if (PhobosToolTip::Instance.IsCameo)
+		return PhobosToolTip::Instance.GetBuffer();
 
+	return def;
+}
+
+DEFINE_NAKED_LJMP(0x478EE1, _CCToolTip_Draw2_SetBuffer)
+{
+	_asm {push eax};
+
+	_asm {push edi};
+	_asm {call CCToolTip_Draw2_SetBuffer};
+	_asm {mov edi, eax};
+
+	_asm {pop eax};
+
+	_asm {mov ebp, 0x89C4D0};
+	_asm {mov ebp, [ebp]};
+
+	_asm {mov ecx, 0x478EE7};
+	_asm {jmp ecx};
+}
+
+void _fastcall CCToolTip_Draw1(CCToolTip* pThis, void*, bool bFullRedraw)
+{
 	// !onSidebar or (onSidebar && ExtToolTip::IsCameo)
 	if (!bFullRedraw || PhobosToolTip::Instance.IsCameo)
 	{
@@ -213,118 +251,9 @@ DEFINE_HOOK(0x478E10, CCToolTip_Draw1, 0x0)
 		pThis->FullRedraw = bFullRedraw;
 		pThis->DrawText(pThis->CurrentToolTipData);
 	}
-	return 0x478E25;
+	return;
 }
+DEFINE_POINTER_LJMP(0x478E10, CCToolTip_Draw1)
 
-DEFINE_HOOK(0x478E4A, CCToolTip_Draw2_SetSurface, 0x6)
-{
-	if (PhobosToolTip::Instance.SlaveDraw)
-	{
-		R->ESI(DSurface::Composite());
-		return 0x478ED3;
-	}
-	return 0;
-}
 
-DEFINE_HOOK(0x478EF8, CCToolTip_Draw2_SetMaxWidth, 0x5)
-{
-	if (PhobosToolTip::Instance.IsCameo)
-	{
-		if (Phobos::UI::MaxToolTipWidth > 0)
-			R->EAX(Phobos::UI::MaxToolTipWidth);
-		else
-			R->EAX(DSurface::ViewBounds->Width);
-
-	}
-	return 0;
-}
-
-DEFINE_HOOK(0x478F52, CCToolTip_Draw2_SetX, 0x8)
-{
-	if (PhobosToolTip::Instance.SlaveDraw)
-		R->EAX(R->EAX() + DSurface::Sidebar->GetWidth());
-
-	return 0;
-}
-
-DEFINE_HOOK(0x478F77, CCToolTip_Draw2_SetY, 0x6)
-{
-	if (PhobosToolTip::Instance.IsCameo)
-	{
-		LEA_STACK(RectangleStruct*, Rect, STACK_OFFS(0x3C, 0x20));
-
-		int const maxHeight = DSurface::ViewBounds->Height - 32;
-
-		if (Rect->Height > maxHeight)
-			Rect->Y += maxHeight - Rect->Height;
-
-		if (Rect->Y < 0)
-			Rect->Y = 0;
-	}
-	return 0;
-}
-
-// TODO in the future
-//
-//DEFINE_HOOK(0x478E30, CCToolTip_Draw2, 0x7)
-//{
-//	GET(CCToolTip*, pThis, ECX);
-//	GET_STACK(ToolTipManagerData*, pManagerData, 0x4);
-//
-//	DSurface* pSurface = nullptr;
-//
-//	RectangleStruct bounds = pManagerData->Dimension;
-//
-//	if (GameOptionsClass::Instance->SidebarSide == 1)
-//	{
-//		int nR = DSurface::ViewBounds->X + DSurface::ViewBounds->Width;
-//		if (bounds.X + pManagerData->Dimension.Width <= nR)
-//			pSurface = DSurface::Composite;
-//		else
-//		{
-//			if (!pThis->FullRedraw || bounds.X < nR)
-//				return 0x479048;
-//			pSurface = DSurface::Sidebar;
-//			bounds.X -= nR;
-//			*reinterpret_cast<bool*>(0xB0B518) = true;
-//		}
-//	}
-//	else
-//	{
-//		int nR = DSurface::SidebarBounds->X + DSurface::SidebarBounds->Width;
-//		if (bounds.X < nR)
-//		{
-//			if (!pThis->FullRedraw || bounds.X + pManagerData->Dimension.Width >= nR)
-//				return 0x479048;
-//			pSurface = DSurface::Sidebar;
-//			*reinterpret_cast<bool*>(0xB0B518) = true;
-//		}
-//		else
-//		{
-//			pSurface = DSurface::Composite;
-//			bounds.X -= nR;
-//		}
-//	}
-//
-//	if (pSurface)
-//	{
-//		BitFont::Instance->GetTextDimension(
-//			PhobosToolTip::Instance.GetBuffer(), bounds.Width, bounds.Height,
-//			Phobos::UI::MaxToolTipWidth > 0 ? Phobos::UI::MaxToolTipWidth : DSurface::WindowBounds->Width);
-//
-//		if (pManagerData->Dimension.Width + bounds.X > pSurface->GetWidth())
-//			bounds.X = pSurface->GetWidth() - pManagerData->Dimension.Width;
-//
-//		bounds.Width = pManagerData->Dimension.Width;
-//		bounds.Height += 4;
-//
-//		BitFont::Instance->field_41 = 1;
-//		BitFont::Instance->SetBounds(&bounds);
-//		BitFont::Instance->Color = static_cast<WORD>(Drawing::RGB2DWORD(191, 98, 10));
-//
-//		BitText::Instance->DrawText(BitFont::Instance, pSurface, PhobosToolTip::Instance.GetBuffer(),
-//			bounds.X + 4, bounds.Y + 2, bounds.Width, bounds.Height, 0, 0, 0);
-//	}
-//
-//	return 0x479048;
-//}
+// =====================
