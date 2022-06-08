@@ -42,7 +42,7 @@ HRESULT __stdcall Blowfish_Loader(
 
 	return result;
 }
-
+/*
 DEFINE_NAKED_LJMP(0x6BEDDD, _Blowfish_Loader_Init) {
 	CALL(Blowfish_Loader);
 	JMP(0x6BEDE3);
@@ -52,3 +52,4 @@ DEFINE_NAKED_LJMP(0x437F6E, _Blowfish_Loader_Create) {
 	CALL(Blowfish_Loader);
 	JMP(0x437F74);
 }
+*/
